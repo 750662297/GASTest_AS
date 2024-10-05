@@ -7,7 +7,13 @@
 		{
 			"Name": "GASTest_AS",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"GameplayAbilities",
+				"AIModule",
+				"UMG"
+			]
 		}
 	],
 	"Plugins": [
