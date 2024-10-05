@@ -38,11 +38,11 @@ void UGTDamageExecCalculation::Execute_Implementation(const FGameplayEffectCusto
 {
     // OutExecutionOutput 储存计算后的输出值
 
-    UAbilitySystemComponent* TargetAbiltySystemComponent  = ExecutionParams.GetTargetAbilitySystemComponent();
+    UAbilitySystemComponent* TargetAbilitySystemComponent  = ExecutionParams.GetTargetAbilitySystemComponent();
     UAbilitySystemComponent* SourceAbilitySystemComponent = ExecutionParams.GetSourceAbilitySystemComponent();
 
     AActor* SourceActor = SourceAbilitySystemComponent ? SourceAbilitySystemComponent->GetAvatarActor() : nullptr;
-    AActor* TargetActor = TargetAbiltySystemComponent ? TargetAbiltySystemComponent->GetAvatarActor() : nullptr;
+    AActor* TargetActor = TargetAbilitySystemComponent ? TargetAbilitySystemComponent->GetAvatarActor() : nullptr;
 
     const FGameplayEffectSpec& Spec = ExecutionParams.GetOwningSpec();
 
@@ -62,20 +62,23 @@ void UGTDamageExecCalculation::Execute_Implementation(const FGameplayEffectCusto
     Armor = FMath::Max<float>(Armor, 0.0f);
 
     float Damage = 0.0f;
+    // Capture optional damage value set on the damage GE as a CalculationModifier under the ExecutionCalculation
     ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(DamageStatics().DamageDef, EvaluationParameters, Damage);
-    Damage += FMath::Max<float>(
-        Spec.GetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Damage")), false, -1.0f), 0.0f);
+    // Add SetByCaller damage if it exists
+    Damage += FMath::Max<float>(Spec.GetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Data.Damage")), false, -1.0f), 0.0f);
 
-    float UnmitigatedDamage = Damage;
-    float MitigatedDamage   = (UnmitigatedDamage) * (100 / (100 + Armor));
+    float UnmitigatedDamage = Damage* SourceAbilitySystemComponent->GetNumericAttribute(UGTAttributeSetBase::GetDamageMultiplierAttribute()); // Can multiply any damage boosters here
+	
+    float MitigatedDamage = (UnmitigatedDamage) * (100 / (100 + Armor));
 
-    if (MitigatedDamage > 0.0f)
+    if (MitigatedDamage > 0.f)
     {
-        OutExecutionOutput.AddOutputModifier(
-            FGameplayModifierEvaluatedData(DamageStatics().DamageProperty, EGameplayModOp::Additive, MitigatedDamage));
+        // Set the Target's damage meta attribute
+        OutExecutionOutput.AddOutputModifier(FGameplayModifierEvaluatedData(DamageStatics().DamageProperty, EGameplayModOp::Additive, MitigatedDamage));
     }
 
-    UGTAbilitySystemComponent* TargetASC = Cast<UGTAbilitySystemComponent>(TargetAbiltySystemComponent);
+    // Broadcast damages to Target ASC
+    UGTAbilitySystemComponent* TargetASC = Cast<UGTAbilitySystemComponent>(TargetAbilitySystemComponent);
     if (TargetASC)
     {
         UGTAbilitySystemComponent* SourceASC = Cast<UGTAbilitySystemComponent>(SourceAbilitySystemComponent);

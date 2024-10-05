@@ -120,7 +120,7 @@ protected:
     UAnimMontage* DeathMontage;
 
     UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "GASTest|GTCharacter")
-    TArray<TSubclassOf<class UGTGameplayAbitity>> CharacterAbilities;
+    TArray<TSubclassOf<class UGTGameplayAbility>> CharacterAbilities;
 
     //初始化角色的默认属性
     //即时的GE，覆盖在刷出/重生时重置的属性值

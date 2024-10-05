@@ -1,13 +1,11 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-// gameplay Ability属性
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "AttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "GTAttributeSetBase.generated.h"
 
+// Uses macros from AttributeSet.h
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
 	GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName) \
 	GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName) \
@@ -21,97 +19,116 @@ UCLASS()
 class GASTEST_AS_API UGTAttributeSetBase : public UAttributeSet
 {
 	GENERATED_BODY()
-
+	
 public:
 	UGTAttributeSetBase();
 
-	/*
-	 *在某个属性值改变之前调用，在属性值实际更新之前做一些准备工作或逻辑
-	 * Attribute：一个FGameplayAttribute类型的引用，表示即将发生变化的属性。
-	 * NewValue：一个浮点数类型的引用，表示即将设置的新值。你可以修改这个值，从而改变最终赋给属性的实际值。
-	 *
-	 * 场景：验证新值是否超出合理的范围；在属性值改变前执行一些前置逻辑，例如扣除资源、检查条件等。
-	 */
-	
+	// AttributeSet Overrides
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
-
-	/*
-	 *在游戏效果（effect）执行完毕后被调用，用于处理游戏效果之后的逻辑，比如更新UI，播放动画，触发事件等
-	 * Data：一个FGameplayEffectModCallbackData类型的常量引用，包含了游戏效果执行的相关信息，包括被影响的属性、调整量等。
-	* 场景：更新UI显示，比如在角色受到伤害后更新生命值UI；触发某些事件或动作，例如在角色获得增益效果后播放特定音效。
-	 */
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
-	/*
-	 *用于指定哪些属性需要在网络间复制（在多人游戏中，为了让客户端和服务器端的数据保持一致，需要明确哪些属性需要在网络之间同步）
-	 * OutLifetimeProps：一个TArray<FLifetimeProperty>类型的引用，用来存储需要复制的属性列表。
-	* 场景：确保重要的游戏数据在网络间同步，如角色的位置、生命值、经验值等；优化网络流量，只复制必要的数据。
-	 */
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	//属性
-
-	//ReplicatedUsing = OnRep_Health 指定当这个属性发生改变并需要在网络间复制时，应该调用OnRep_Health函数
+	// Current Health, when 0 we expect owner to die unless prevented by an ability. Capped by MaxHealth.
+	// Positive changes can directly use this.
+	// Negative changes to Health should go through Damage meta attribute.
 	UPROPERTY(BlueprintReadOnly, Category = "Health", ReplicatedUsing = OnRep_Health)
 	FGameplayAttributeData Health;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,Health)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, Health)
 
+	// MaxHealth is its own attribute since GameplayEffects may modify it
 	UPROPERTY(BlueprintReadOnly, Category = "Health", ReplicatedUsing = OnRep_MaxHealth)
 	FGameplayAttributeData MaxHealth;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,MaxHealth)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, MaxHealth)
 
-	//每秒恢复的生命值
+	// Health regen rate will passively increase Health every second
 	UPROPERTY(BlueprintReadOnly, Category = "Health", ReplicatedUsing = OnRep_HealthRegenRate)
 	FGameplayAttributeData HealthRegenRate;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,HealthRegenRate)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, HealthRegenRate)
 
+	// Current Mana, used to execute special abilities. Capped by MaxMana.
+	UPROPERTY(BlueprintReadOnly, Category = "Mana", ReplicatedUsing = OnRep_Mana)
+	FGameplayAttributeData Mana;
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, Mana)
+
+	// MaxMana is its own attribute since GameplayEffects may modify it
+	UPROPERTY(BlueprintReadOnly, Category = "Mana", ReplicatedUsing = OnRep_MaxMana)
+	FGameplayAttributeData MaxMana;
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, MaxMana)
+
+	// Mana regen rate will passively increase Mana every second
+	UPROPERTY(BlueprintReadOnly, Category = "Mana", ReplicatedUsing = OnRep_ManaRegenRate)
+	FGameplayAttributeData ManaRegenRate;
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, ManaRegenRate)
+
+	// Current stamina, used to execute special abilities. Capped by MaxStamina.
+	UPROPERTY(BlueprintReadOnly, Category = "Stamina", ReplicatedUsing = OnRep_Stamina)
+	FGameplayAttributeData Stamina;
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, Stamina)
+
+	// MaxStamina is its own attribute since GameplayEffects may modify it
+	UPROPERTY(BlueprintReadOnly, Category = "Stamina", ReplicatedUsing = OnRep_MaxStamina)
+	FGameplayAttributeData MaxStamina;
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, MaxStamina)
+
+	// Stamina regen rate will passively increase Stamina every second
+	UPROPERTY(BlueprintReadOnly, Category = "Stamina", ReplicatedUsing = OnRep_StaminaRegenRate)
+	FGameplayAttributeData StaminaRegenRate;
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, StaminaRegenRate)
+
+	// Armor reduces the amount of damage done by attackers
 	UPROPERTY(BlueprintReadOnly, Category = "Armor", ReplicatedUsing = OnRep_Armor)
 	FGameplayAttributeData Armor;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,Armor)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, Armor)
 
+	// Damage is a meta attribute used by the DamageExecution to calculate final damage, which then turns into -Health
+	// Temporary value that only exists on the Server. Not replicated.
 	UPROPERTY(BlueprintReadOnly, Category = "Damage")
 	FGameplayAttributeData Damage;
 	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, Damage)
 
-	UPROPERTY(BlueprintReadOnly, Category = "Mana", ReplicatedUsing = OnRep_Mana)
-	FGameplayAttributeData Mana;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,Mana)
-
-	UPROPERTY(BlueprintReadOnly, Category = "Mana", ReplicatedUsing = OnRep_MaxMana)
-	FGameplayAttributeData MaxMana;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,MaxMana)
-    UPROPERTY(BlueprintReadOnly, Category = "Mana", ReplicatedUsing = OnRep_ManaRegenRate)
-	FGameplayAttributeData ManaRegenRate;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,ManaRegenRate)
-
+	// MoveSpeed affects how fast characters can move.
 	UPROPERTY(BlueprintReadOnly, Category = "MoveSpeed", ReplicatedUsing = OnRep_MoveSpeed)
 	FGameplayAttributeData MoveSpeed;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,MoveSpeed)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, MoveSpeed)
 
 	UPROPERTY(BlueprintReadOnly, Category = "Character Level", ReplicatedUsing = OnRep_CharacterLevel)
 	FGameplayAttributeData CharacterLevel;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,CharacterLevel)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, CharacterLevel)
 
+	// Experience points gained from killing enemies. Used to level up (not implemented in this project).
 	UPROPERTY(BlueprintReadOnly, Category = "XP", ReplicatedUsing = OnRep_XP)
 	FGameplayAttributeData XP;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,XP)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, XP)
 
-	//经验值奖励
+	// Experience points awarded to the character's killers. Used to level up (not implemented in this project).
 	UPROPERTY(BlueprintReadOnly, Category = "XP", ReplicatedUsing = OnRep_XPBounty)
 	FGameplayAttributeData XPBounty;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,XPBounty)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, XPBounty)
 
+	// Gold gained from killing enemies. Used to purchase items (not implemented in this project).
 	UPROPERTY(BlueprintReadOnly, Category = "Gold", ReplicatedUsing = OnRep_Gold)
 	FGameplayAttributeData Gold;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,Gold)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, Gold)
 
+	// Gold awarded to the character's killer. Used to purchase items (not implemented in this project).
 	UPROPERTY(BlueprintReadOnly, Category = "Gold", ReplicatedUsing = OnRep_GoldBounty)
 	FGameplayAttributeData GoldBounty;
-	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase,GoldBounty)
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, GoldBounty)
 
-protected:
-	void AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty);
+	UPROPERTY(BlueprintReadOnly, Category = "Damage", ReplicatedUsing = OnRep_DamageMultiplier)
+	FGameplayAttributeData DamageMultiplier;
+	ATTRIBUTE_ACCESSORS(UGTAttributeSetBase, DamageMultiplier)
 	
+protected:
+	// Helper function to proportionally adjust the value of an attribute when it's associated max attribute changes.
+	// (i.e. When MaxHealth increases, Health increases by an amount that maintains the same percentage as before)
+	void AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute, const FGameplayAttributeData& MaxAttribute, float NewMaxValue, const FGameplayAttribute& AffectedAttributeProperty);
+
+	/**
+	* These OnRep functions exist to make sure that the ability system internal representations are synchronized properly during replication
+	**/
+
 	UFUNCTION()
 	virtual void OnRep_Health(const FGameplayAttributeData& OldHealth);
 
@@ -122,16 +139,26 @@ protected:
 	virtual void OnRep_HealthRegenRate(const FGameplayAttributeData& OldHealthRegenRate);
 
 	UFUNCTION()
-	virtual void OnRep_Armor(const FGameplayAttributeData& OldArmor);
+	virtual void OnRep_Mana(const FGameplayAttributeData& OldMana);
 
 	UFUNCTION()
-	virtual void OnRep_Mana(const FGameplayAttributeData& OldMana);
-	
-	UFUNCTION()
 	virtual void OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana);
-    UFUNCTION()
+
+	UFUNCTION()
 	virtual void OnRep_ManaRegenRate(const FGameplayAttributeData& OldManaRegenRate);
-	
+
+	UFUNCTION()
+	virtual void OnRep_Stamina(const FGameplayAttributeData& OldStamina);
+
+	UFUNCTION()
+	virtual void OnRep_MaxStamina(const FGameplayAttributeData& OldMaxStamina);
+
+	UFUNCTION()
+	virtual void OnRep_StaminaRegenRate(const FGameplayAttributeData& OldStaminaRegenRate);
+
+	UFUNCTION()
+	virtual void OnRep_Armor(const FGameplayAttributeData& OldArmor);
+
 	UFUNCTION()
 	virtual void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
 
@@ -149,7 +176,10 @@ protected:
 
 	UFUNCTION()
 	virtual void OnRep_GoldBounty(const FGameplayAttributeData& OldGoldBounty);
-	
+
+	UFUNCTION()
+	virtual void OnRep_DamageMultiplier(const FGameplayAttributeData& OldDamageMultiplier);
+
 private:
 	FGameplayTag HitDirectionFrontTag;
 	FGameplayTag HitDirectionBackTag;

@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GTGameplayAbitity.h"
+#include "GTGameplayAbility.h"
 #include "GTGA_CharacterJump.generated.h"
 
 /**
  *
  */
 UCLASS()
-class GASTEST_AS_API UGTGA_CharacterJump : public UGTGameplayAbitity
+class GASTEST_AS_API UGTGA_CharacterJump : public UGTGameplayAbility
 {
 	GENERATED_BODY()
 public:

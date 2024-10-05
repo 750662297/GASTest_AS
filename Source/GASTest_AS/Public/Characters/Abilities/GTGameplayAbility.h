@@ -5,17 +5,17 @@
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
 #include "GASTest_AS/GASTest_AS.h"
-#include "GTGameplayAbitity.generated.h"
+#include "GTGameplayAbility.generated.h"
 
 /**
  *
  */
 UCLASS()
-class GASTEST_AS_API UGTGameplayAbitity : public UGameplayAbility {
+class GASTEST_AS_API UGTGameplayAbility : public UGameplayAbility {
 	GENERATED_BODY()
 
 public:
-	UGTGameplayAbitity();
+	UGTGameplayAbility();
 
 	//当按下输入键时，此设置的技能将自动激活
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Ability")
@@ -32,5 +32,14 @@ public:
 
 	//当能力被赋予一个角色时会被调用，执行一些初始化逻辑（立即激活被动技能等）
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo *ActorInfo, const FGameplayAbilitySpec &Spec) override;
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Ability")
+	FText AbilityName;
 
+protected:
+	UFUNCTION()
+	void StartCooldown(float CooldownDuration, FGameplayTag AbilityTag);
+
+	UFUNCTION()
+	virtual void OnCooldownEnd(FGameplayTag AbilityTag);
 };

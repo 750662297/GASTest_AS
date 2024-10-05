@@ -4,7 +4,7 @@
 #include "Characters/GTCharacterMovementComponent.h"
 #include "Characters/Abilities/AttributeSets/GTAttributeSetBase.h"
 #include "Characters/Abilities/GTAbilitySystemComponent.h"
-#include "Characters/Abilities/GTGameplayAbitity.h"
+#include "Characters/Abilities/GTGameplayAbility.h"
 #include "Components/CapsuleComponent.h"
 #include "GASTest_AS/GASTest_AS.h"
 
@@ -288,7 +288,7 @@ void AGTCharacterBase::AddCharacterAbilities()
         return;
     }
 
-    for(TSubclassOf<UGTGameplayAbitity>& StartupAbility : CharacterAbilities)
+    for(TSubclassOf<UGTGameplayAbility>& StartupAbility : CharacterAbilities)
     {
         AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(StartupAbility, GetAbilityLevel(StartupAbility.GetDefaultObject()->AbilityID),static_cast<int32>(StartupAbility.GetDefaultObject()->AbilityInputID),this));
     }

@@ -1,51 +1,62 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Copyright 2020 Dan Kestranek.
 
 
 #include "Characters/Abilities/AttributeSets/GTAttributeSetBase.h"
-#include "GASTest_AS/GASTest_AS.h"
+#include "Characters/GTCharacterBase.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectExtension.h"
-#include "Characters/GTCharacterBase.h"
+#include "Net/UnrealNetwork.h"
 #include "Player/GTPlayerController.h"
-
 
 UGTAttributeSetBase::UGTAttributeSetBase()
 {
-	//Cache tags
+	// Cache tags
 	HitDirectionFrontTag = FGameplayTag::RequestGameplayTag(FName("Effect.HitReact.Front"));
 	HitDirectionBackTag = FGameplayTag::RequestGameplayTag(FName("Effect.HitReact.Back"));
-	HitDirectionLeftTag = FGameplayTag::RequestGameplayTag(FName("Effect.HitReact.Left"));
 	HitDirectionRightTag = FGameplayTag::RequestGameplayTag(FName("Effect.HitReact.Right"));
+	HitDirectionLeftTag = FGameplayTag::RequestGameplayTag(FName("Effect.HitReact.Left"));
 }
 
 void UGTAttributeSetBase::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
 {
+	// This is called whenever attributes change, so for max health/mana we want to scale the current totals to match
 	Super::PreAttributeChange(Attribute, NewValue);
 
-	if (Attribute == GetMaxHealthAttribute())
+	// If a Max value changes, adjust current to keep Current % of Current to Max
+	if (Attribute == GetMaxHealthAttribute()) // GetMaxHealthAttribute comes from the Macros defined at the top of the header
 	{
 		AdjustAttributeForMaxChange(Health, MaxHealth, NewValue, GetHealthAttribute());
 	}
-	if (Attribute == GetMoveSpeedAttribute())
+	else if (Attribute == GetMaxManaAttribute())
 	{
-		NewValue = FMath::Clamp<float>(NewValue, 150, 1000); //将NewValue的值限制在150-1000
+		AdjustAttributeForMaxChange(Mana, MaxMana, NewValue, GetManaAttribute());
+	}
+	else if (Attribute == GetMaxStaminaAttribute())
+	{
+		AdjustAttributeForMaxChange(Stamina, MaxStamina, NewValue, GetStaminaAttribute());
+	}
+	else if (Attribute == GetMoveSpeedAttribute())
+	{
+		// Cannot slow less than 150 units/s and cannot boost more than 1000 units/s
+		NewValue = FMath::Clamp<float>(NewValue, 150, 1000);
+	}
+	else if(Attribute == GetDamageMultiplierAttribute())
+	{
+		NewValue = FMath::Clamp<float>(NewValue,1.0f,50.f);
 	}
 }
 
-void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
+void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCallbackData & Data)
 {
 	Super::PostGameplayEffectExecute(Data);
 
-	//获取上下文信息
 	FGameplayEffectContextHandle Context = Data.EffectSpec.GetContext();
 	UAbilitySystemComponent* Source = Context.GetOriginalInstigatorAbilitySystemComponent();
-
-	//获取标签信息
 	const FGameplayTagContainer& SourceTags = *Data.EffectSpec.CapturedSourceTags.GetAggregatedTags();
 	FGameplayTagContainer SpecAssetTags;
 	Data.EffectSpec.GetAllAssetTags(SpecAssetTags);
 
-	//获取目标角色信息
+	// Get the Target actor, which should be our owner
 	AActor* TargetActor = nullptr;
 	AController* TargetController = nullptr;
 	AGTCharacterBase* TargetCharacter = nullptr;
@@ -56,7 +67,7 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 		TargetCharacter = Cast<AGTCharacterBase>(TargetActor);
 	}
 
-	//获取源角色信息
+	// Get the Source actor
 	AActor* SourceActor = nullptr;
 	AController* SourceController = nullptr;
 	AGTCharacterBase* SourceCharacter = nullptr;
@@ -64,7 +75,6 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 	{
 		SourceActor = Source->AbilityActorInfo->AvatarActor.Get();
 		SourceController = Source->AbilityActorInfo->PlayerController.Get();
-
 		if (SourceController == nullptr && SourceActor != nullptr)
 		{
 			if (APawn* Pawn = Cast<APawn>(SourceActor))
@@ -73,6 +83,7 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 			}
 		}
 
+		// Use the controller to find the source pawn
 		if (SourceController)
 		{
 			SourceCharacter = Cast<AGTCharacterBase>(SourceController->GetPawn());
@@ -82,15 +93,14 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 			SourceCharacter = Cast<AGTCharacterBase>(SourceActor);
 		}
 
+		// Set the causer actor based on context if it's set
 		if (Context.GetEffectCauser())
 		{
-			SourceActor = Context.GetEffectCauser(); //当效果的触发者不是直接角色时不需要这一步
+			SourceActor = Context.GetEffectCauser();
 		}
 	}
 
 	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
-	{
-			if (Data.EvaluatedData.Attribute == GetDamageAttribute())
 	{
 		// Try to extract a hit result
 		FHitResult HitResult;
@@ -102,7 +112,7 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 		// Store a local copy of the amount of damage done and clear the damage attribute
 		const float LocalDamageDone = GetDamage();
 		SetDamage(0.f);
-
+	
 		if (LocalDamageDone > 0.0f)
 		{
 			// If character was alive before damage is added, handle damage
@@ -133,8 +143,7 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 
 				if (Hit)
 				{
-					EGTHitReactDirection HitDirection = TargetCharacter->GetHitReactDirection(
-						Data.EffectSpec.GetContext().GetHitResult()->Location);
+					EGTHitReactDirection HitDirection = TargetCharacter->GetHitReactDirection(Data.EffectSpec.GetContext().GetHitResult()->Location);
 					switch (HitDirection)
 					{
 					case EGTHitReactDirection::Left:
@@ -174,8 +183,7 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 					if (SourceController != TargetController)
 					{
 						// Create a dynamic instant Gameplay Effect to give the bounties
-						UGameplayEffect* GEBounty = NewObject<UGameplayEffect>(
-							GetTransientPackage(), FName(TEXT("Bounty")));
+						UGameplayEffect* GEBounty = NewObject<UGameplayEffect>(GetTransientPackage(), FName(TEXT("Bounty")));
 						GEBounty->DurationPolicy = EGameplayEffectDurationType::Instant;
 
 						int32 Idx = GEBounty->Modifiers.Num();
@@ -196,36 +204,57 @@ void UGTAttributeSetBase::PostGameplayEffectExecute(const FGameplayEffectModCall
 				}
 			}
 		}
-	} // Damage
-
-	}
+	}// Damage
 	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
+		// Handle other health changes.
+		// Health loss should go through Damage.
 		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
-	}
+	} // Health
 	else if (Data.EvaluatedData.Attribute == GetManaAttribute())
 	{
+		// Handle mana changes.
 		SetMana(FMath::Clamp(GetMana(), 0.0f, GetMaxMana()));
+	} // Mana
+	else if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
+	{
+		// Handle stamina changes.
+		SetStamina(FMath::Clamp(GetStamina(), 0.0f, GetMaxStamina()));
 	}
 }
 
 void UGTAttributeSetBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, Health, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, MaxHealth, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, HealthRegenRate, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, Mana, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, MaxMana, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, ManaRegenRate, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, Stamina, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, MaxStamina, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, StaminaRegenRate, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, Armor, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, MoveSpeed, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, CharacterLevel, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, XP, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, XPBounty, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, Gold, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, GoldBounty, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UGTAttributeSetBase, DamageMultiplier, COND_None, REPNOTIFY_Always);
 }
 
-void UGTAttributeSetBase::AdjustAttributeForMaxChange(FGameplayAttributeData& AffectedAttribute,
-                                                      const FGameplayAttributeData& MaxAttribute, float NewMaxValue,
-                                                      const FGameplayAttribute& AffectedAttributeProperty)
+void UGTAttributeSetBase::AdjustAttributeForMaxChange(FGameplayAttributeData & AffectedAttribute, const FGameplayAttributeData & MaxAttribute, float NewMaxValue, const FGameplayAttribute & AffectedAttributeProperty)
 {
 	UAbilitySystemComponent* AbilityComp = GetOwningAbilitySystemComponent();
 	const float CurrentMaxValue = MaxAttribute.GetCurrentValue();
-
 	if (!FMath::IsNearlyEqual(CurrentMaxValue, NewMaxValue) && AbilityComp)
 	{
+		// Change current value to maintain the current Val / Max percent
 		const float CurrentValue = AffectedAttribute.GetCurrentValue();
-		float NewDelta = (CurrentMaxValue > 0.f)
-			                 ? (CurrentValue * NewMaxValue / CurrentMaxValue) - CurrentMaxValue
-			                 : NewMaxValue;
+		float NewDelta = (CurrentMaxValue > 0.f) ? (CurrentValue * NewMaxValue / CurrentMaxValue) - CurrentValue : NewMaxValue;
 
 		AbilityComp->ApplyModToAttributeUnsafe(AffectedAttributeProperty, EGameplayModOp::Additive, NewDelta);
 	}
@@ -246,11 +275,6 @@ void UGTAttributeSetBase::OnRep_HealthRegenRate(const FGameplayAttributeData& Ol
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, HealthRegenRate, OldHealthRegenRate);
 }
 
-void UGTAttributeSetBase::OnRep_Armor(const FGameplayAttributeData& OldArmor)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, Armor, OldArmor);
-}
-
 void UGTAttributeSetBase::OnRep_Mana(const FGameplayAttributeData& OldMana)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, Mana, OldMana);
@@ -264,6 +288,26 @@ void UGTAttributeSetBase::OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana
 void UGTAttributeSetBase::OnRep_ManaRegenRate(const FGameplayAttributeData& OldManaRegenRate)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, ManaRegenRate, OldManaRegenRate);
+}
+
+void UGTAttributeSetBase::OnRep_Stamina(const FGameplayAttributeData& OldStamina)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, Stamina, OldStamina);
+}
+
+void UGTAttributeSetBase::OnRep_MaxStamina(const FGameplayAttributeData& OldMaxStamina)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, MaxStamina, OldMaxStamina);
+}
+
+void UGTAttributeSetBase::OnRep_StaminaRegenRate(const FGameplayAttributeData& OldStaminaRegenRate)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, StaminaRegenRate, OldStaminaRegenRate);
+}
+
+void UGTAttributeSetBase::OnRep_Armor(const FGameplayAttributeData& OldArmor)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, Armor, OldArmor);
 }
 
 void UGTAttributeSetBase::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed)
@@ -294,4 +338,9 @@ void UGTAttributeSetBase::OnRep_Gold(const FGameplayAttributeData& OldGold)
 void UGTAttributeSetBase::OnRep_GoldBounty(const FGameplayAttributeData& OldGoldBounty)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, GoldBounty, OldGoldBounty);
+}
+
+void UGTAttributeSetBase::OnRep_DamageMultiplier(const FGameplayAttributeData& OldDamageMultiplier)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UGTAttributeSetBase, DamageMultiplier, OldDamageMultiplier);
 }

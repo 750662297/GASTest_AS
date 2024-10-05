@@ -71,7 +71,7 @@ void AGTPlayerController::SetRespawnCountdown_Implementation(float RespawnTimeRe
 {
     if(UIHUDWidget)
     {
-        UIHUDWidget->SetRespawnCoundown(RespawnTimeRemaining);
+        UIHUDWidget->SetRespawnCountdown(RespawnTimeRemaining);
     }
 }
 

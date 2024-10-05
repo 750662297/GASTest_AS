@@ -1,9 +1,11 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+﻿
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTags.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/ListView.h"
+#include "GTCooldownItemWidget.h"
 #include "GTHUDWidget.generated.h"
 
 /**
@@ -19,16 +21,29 @@ public:
 	void ShowAbilityConfirmCancelText(bool ShowText);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void SetRespawnCoundown(float RespawnTimeRemaining);
+	void SetRespawnCountdown(float RespawnTimeRemaining);
 
+	UFUNCTION(BlueprintCallable)
+	void AddCooldownInfo(const FText& AbilityName, FGameplayTag AbilityTag, float CooldownDuration,
+	                     float currentTime = 0);
+	
+	UFUNCTION(BlueprintCallable)
+	void RemoveCooldown(FGameplayTag AbilityTag);
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateBufferNumber(FGameplayTag AbilityTag, int32 Number);
+	
 	/**
-	 *Attribute setters
-	 */
+	* Attribute setters
+	*/
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetMaxHealth(float MaxHealth);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetCurrentHealth(float CurrentHealth);
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void SetHealthPercentage(float HealthPercentage);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetHealthRegenRate(float HealthRegenRate);
@@ -38,6 +53,9 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetCurrentStamina(float CurrentStamina);
+
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void SetStaminaPercentage(float StaminaPercentage);
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetStaminaRegenRate(float StaminaRegenRate);
@@ -62,4 +80,36 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void SetGold(int32 Gold);
+
+protected:
+	UFUNCTION(BlueprintCallable)
+	void UpdateCooldownInfo(const FText& AbilityName, FGameplayTag AbilityTag, float CooldownDuration,
+	                          float CurrentTime);
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateCooldownItems(TArray<FGameplayTag> ItemsToUpdate);
+
+	UFUNCTION(BlueprintCallable)
+	void RemoveCooldownItems(TArray<FGameplayTag> ItemsToRemove);
+	
+	UFUNCTION(BlueprintCallable)
+	void AddCooldownItem(const FText& Name, FGameplayTag AbilityTag, float Duration, float Current);
+
+	
+	
+	UFUNCTION()
+	void OnTimerout();
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HUD|Timer")
+	float TimerInvertal=0.1f;
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	UListView* ListView;
+	
+private:
+	UPROPERTY()
+	TMap<FGameplayTag, UGTCooldownItemData*> CooldownAbilities;
+
+	UPROPERTY()
+	FTimerHandle HUDTimerHandle;
 };

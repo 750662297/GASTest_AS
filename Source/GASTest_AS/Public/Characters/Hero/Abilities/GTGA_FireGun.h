@@ -4,14 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Projectile/GTProjectileBase.h"
-#include "..\..\Abilities\GTGameplayAbitity.h"
+#include "..\..\Abilities\GTGameplayAbility.h"
 #include "GTGA_FireGun.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class GASTEST_AS_API UGTGA_FireGun : public UGTGameplayAbitity
+class GASTEST_AS_API UGTGA_FireGun : public UGTGameplayAbility
 {
 	GENERATED_BODY()
 
